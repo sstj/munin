@@ -19,8 +19,8 @@ OLDREVISION=$(cd trunk && git describe)
 [ -z "$NO_UPDATE" ] && (cd trunk && git pull)
 REVISION=$(cd trunk && git describe)
 
-VERSION=$(cd trunk && ./getversion | tr '-' '-')
-UPSTREAM=$(cd trunk && git describe --abbrev=0 | tr '-' '-')
+UPSTREAM=$(cd trunk && ./getversion | tr '-' '-')
+VERSION="${UPSTREAM}-999"
 
 # Creating temp source dir
 (cd trunk && git archive --format=tar debian-auto --prefix=munin-${UPSTREAM}/ ) | tar x
@@ -74,7 +74,5 @@ then
 	gzip -9 < Packages > Packages.gz
 fi
 
-rm $TMPFILE
-
-cd ..
-rm munin-${UPSTREAM}
+rm -f $TMPFILE
+rm -Rf ../munin-${UPSTREAM}
