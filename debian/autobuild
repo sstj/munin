@@ -1,5 +1,5 @@
 #! /bin/sh
-# Autobuilding script : SVN -> debian packages
+# Autobuilding script : Git -> debian packages
 # (c) GPL - Steve Schnepp <steve.schnepp@pwkf.org>
 
 # Has to be launched from the upper svn dir. 
@@ -15,19 +15,17 @@ set -e
 # We don't want localized mesgs
 LANG=C
 
-# Always gets the last debian building tools
-( cd debian && svn -q up )
+OLDREVISION=$(cd trunk && git describe)
+[ -z "$NO_UPDATE" ] && (cd trunk && git pull)
+REVISION=$(cd trunk && git describe)
 
-[ -d trunk ] || exit 2;
+VERSION=$(cd trunk && ./getversion | tr '-' '-')
+UPSTREAM=$(cd trunk && git describe --abbrev=0 | tr '-' '-')
 
-cd trunk
+# Creating temp source dir
+(cd trunk && git archive --format=tar debian-auto --prefix=munin-${UPSTREAM}/ ) | tar x
 
-OLDREVISION=$(svn st -v -N . | tr -s ' ' | cut -d' ' -f3 | head -n 1)
-[ -z "$NO_UPDATE" ] && svn -q up
-REVISION=$(svn st -v -N . | tr -s ' ' | cut -d' ' -f3 | head -n 1)
-
-# Overriding the RELEASE version
-echo 1.999.$REVISION > RELEASE
+cd munin-${UPSTREAM}
 
 TMPFILE=$(mktemp)
 
@@ -35,14 +33,13 @@ if [ ! -z "$NO_UPDATE" -o $OLDREVISION != $REVISION ]
 then
 	# Something has changed, building the changelog
 	(
-		printf "munin (1.999.$REVISION) unstable; urgency=low\n"
+		printf "munin ($VERSION) experimental; urgency=low\n"
 		printf "\n" 
-		printf "  * Somewhat daily build from trunk\n"
-		printf "  * Using a 1.999.SVN naming scheme to enable rpm package building using alien\n";
-		printf "  * SVN Log :\n";
-		[ -z "$NO_UPDATE" ] && svn log -r$(($OLDREVISION + 1)):$REVISION | perl -lne 'next if m/^---+$/ || m/^$/; s/^/     /; print;'
+		printf "  * Somewhat daily build from devel\n"
+		printf "  * git shortlog:\n";
+		[ -z "$NO_UPDATE" ] && git shortlog $OLDREVISION..$REVISION 
 		printf "\n"
-		printf " -- Steve Schnepp <steve.schnepp@gmail.com>  "
+		printf " -- Steve Schnepp <steve.schnepp@munin-monitoring.org>  "
 		date --rfc-822
 		printf "\n"
 	) >> $TMPFILE
@@ -53,28 +50,31 @@ then
 	# Building....
 	mkdir -p ../logs
 	( 
-		echo $(date) " - START - Building package 1.999.$REVISION"
+		echo $(date) " - START - Building package $VERSION"
 	 	dpkg-buildpackage -us -uc -F -tc "$@"
-		echo $(date) " - STOP - Building package 1.999.$REVISION - retcode : $!"
-	) >> ../logs/dpkg-buildpackage-1.999.$REVISION.log 
+		echo $(date) " - STOP - Building package $VERSION - retcode : $!"
+	) >> ../logs/dpkg-buildpackage-$VERSION.log 
 else 
 	exit 1
 fi
 
 DEB_ARCH=$(dpkg --print-architecture)
-if [ -r "../munin_1.999.${REVISION}_${DEB_ARCH}.changes" ]
+if [ -r "../munin_${VERSION}_${DEB_ARCH}.changes" ]
 then  
 	# Moving everything in packages/ and prepare it for upload
 	mkdir -p ../packages/munin
 	test -r ../packages/override || touch ../packages/override
 	cd ../packages
-	mv ../*1.999.${REVISION}*.deb munin/
-	mv ../*1.999.${REVISION}*.dsc munin/
-	mv ../*1.999.${REVISION}*.tar.gz munin/
-	mv ../*1.999.${REVISION}*.changes .
+	mv ../*${VERSION}*.deb munin/
+	mv ../*${VERSION}*.dsc munin/
+	mv ../*${VERSION}*.tar.gz munin/
+	mv ../*${VERSION}*.changes .
 
 	dpkg-scanpackages -m munin override > Packages
 	gzip -9 < Packages > Packages.gz
 fi
 
 rm $TMPFILE
+
+cd ..
+rm munin-${UPSTREAM}
