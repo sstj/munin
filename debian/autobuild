@@ -15,9 +15,9 @@ set -e
 # We don't want localized mesgs
 LANG=C
 
-OLDREVISION=$(cd trunk && git describe)
+OLDREVISION=$(cd trunk && git rev-parse HEAD)
 [ -z "$NO_UPDATE" ] && (cd trunk && git pull)
-REVISION=$(cd trunk && git describe)
+REVISION=$(cd trunk && git rev-parse HEAD)
 
 UPSTREAM=$(cd trunk && ./getversion | tr '-' '-')
 VERSION="${UPSTREAM}-999"
