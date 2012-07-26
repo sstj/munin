@@ -33,6 +33,7 @@ if [ ! -z "$NO_UPDATE" -o $OLDREVISION != $REVISION ]
 then
 	# Something has changed, building the changelog
 	(
+		cd ../trunk
 		printf "munin ($VERSION) experimental; urgency=low\n"
 		printf "\n" 
 		printf "  * Somewhat daily build from devel\n"
