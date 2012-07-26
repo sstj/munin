@@ -37,8 +37,10 @@ then
 		printf "munin ($VERSION) experimental; urgency=low\n"
 		printf "\n" 
 		printf "  * Somewhat daily build from devel\n"
-		printf "  * git shortlog:\n";
-		[ -z "$NO_UPDATE" ] && git shortlog $OLDREVISION..$REVISION 
+		printf "  * Authors:\n";
+		[ -z "$NO_UPDATE" ] && git shortlog $OLDREVISION..$REVISION | perl -lne 'if (/^(\w[^(]+)/) { $a = $1; $a =~ s/ +$//; print "    $a" }'
+		printf "  * Commit log:\n";
+		[ -z "$NO_UPDATE" ] && git log --graph --no-merges --oneline $OLDREVISION..$REVISION | perl -lne 'print "    $_"'
 		printf "\n"
 		printf " -- Steve Schnepp <steve.schnepp@munin-monitoring.org>  "
 		date --rfc-822
