@@ -16,7 +16,7 @@ set -e
 LANG=C
 
 OLDREVISION=$(cd trunk && git rev-parse HEAD)
-[ -z "$NO_UPDATE" ] && (cd trunk && git pull)
+[ -z "$NO_UPDATE" ] && (cd trunk && git fetch origin && git merge origin/devel )
 REVISION=$(cd trunk && git rev-parse HEAD)
 
 UPSTREAM=$(cd trunk && ./getversion | tr '-' '-')
