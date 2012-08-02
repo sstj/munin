@@ -26,6 +26,7 @@ VERSION="${UPSTREAM}-999"
 (cd trunk && git archive --format=tar debian-auto --prefix=munin-${UPSTREAM}/ ) | tar x
 
 cd munin-${UPSTREAM}
+echo ${UPSTREAM} > RELEASE
 
 TMPFILE=$(mktemp)
 
