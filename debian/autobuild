@@ -62,13 +62,17 @@ else
 	exit 1
 fi
 
+rm -f $TMPFILE
+rm -Rf munin-${UPSTREAM}
+
 DEB_ARCH=$(dpkg --print-architecture)
-if [ -r "../munin_${VERSION}_${DEB_ARCH}.changes" ]
+if [ -r "munin_${VERSION}_${DEB_ARCH}.changes" ]
 then  
 	# Moving everything in packages/ and prepare it for upload
-	mkdir -p ../packages/munin
-	test -r ../packages/override || touch ../packages/override
-	cd ../packages
+	mkdir -p packages/munin
+	[ -r packages/override ] || touch packages/override
+
+	cd packages
 	mv ../*${VERSION}*.deb munin/
 	mv ../*${VERSION}*.dsc munin/
 	mv ../*${VERSION}*.tar.gz munin/
@@ -77,6 +81,3 @@ then
 	dpkg-scanpackages -m munin override > Packages
 	gzip -9 < Packages > Packages.gz
 fi
-
-rm -f $TMPFILE
-rm -Rf ../munin-${UPSTREAM}
