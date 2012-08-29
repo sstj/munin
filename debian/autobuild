@@ -22,47 +22,57 @@ REVISION=$(cd trunk && git rev-parse HEAD)
 UPSTREAM=$(cd trunk && ./getversion | tr '-' '-')
 VERSION="${UPSTREAM}-999"
 
-# Creating temp source dir
+
+if [ -z "$NO_UPDATE" -a "$OLDREVISION" = "$REVISION" ]
+then
+	echo "Nothing to do, ${UPSTREAM} ($REVISION) is the oldest"	
+	exit 1
+fi
+
+# Creating temp source dir ...
 (cd trunk && git archive --format=tar debian-auto --prefix=munin-${UPSTREAM}/ ) | tar x
 
+# ... and go there
 cd munin-${UPSTREAM}
 echo ${UPSTREAM} > RELEASE
 
 TMPFILE=$(mktemp)
 
-if [ ! -z "$NO_UPDATE" -o $OLDREVISION != $REVISION ]
-then
-	# Something has changed, building the changelog
-	(
-		cd ../trunk
-		printf "munin ($VERSION) experimental; urgency=low\n"
-		printf "\n" 
-		printf "  * Somewhat daily build from devel\n"
-		printf "  * Authors:\n";
-		[ -z "$NO_UPDATE" ] && git shortlog $OLDREVISION..$REVISION | perl -lne 'if (/^(\w[^(]+)/) { $a = $1; $a =~ s/ +$//; print "    $a" }'
-		printf "  * Commit log:\n";
-		[ -z "$NO_UPDATE" ] && git log --graph --no-merges --oneline $OLDREVISION..$REVISION | perl -lne 'print "    $_"'
-		printf "\n"
-		printf " -- Steve Schnepp <steve.schnepp@munin-monitoring.org>  "
-		date --rfc-822
-		printf "\n"
-	) >> $TMPFILE
+# Something has changed, building the changelog, from trunk
+(
+	cd ../trunk
+	printf "munin ($VERSION) experimental; urgency=low\n"
+	printf "\n" 
+	printf "  * Somewhat daily build from devel\n"
+	printf "  * Authors:\n";
+	[ -z "$NO_UPDATE" ] && git shortlog $OLDREVISION..$REVISION | perl -lne 'if (/^(\w[^(]+)/) { $a = $1; $a =~ s/ +$//; print "    $a" }'
+	printf "  * Commit log:\n";
+	[ -z "$NO_UPDATE" ] && git log --graph --no-merges --oneline $OLDREVISION..$REVISION | perl -lne 'print "    $_"'
+	printf "\n"
+	printf " -- Steve Schnepp <steve.schnepp@munin-monitoring.org>  "
+	date --rfc-822
+	printf "\n"
+) >> $TMPFILE
 
-	# Create a new one	
-	( cat debian/changelog >> $TMPFILE ) && cat $TMPFILE > debian/changelog
 
-	# Building....
-	mkdir -p ../logs
-	( 
-		echo $(date) " - START - Building package $VERSION"
-	 	dpkg-buildpackage -us -uc -F -tc "$@"
-		echo $(date) " - STOP - Building package $VERSION - retcode : $!"
-	) >> ../logs/dpkg-buildpackage-$VERSION.log 
-else 
-	exit 1
-fi
+# Create a new one
+( cat debian/changelog >> $TMPFILE ) && cat $TMPFILE > debian/changelog
 
+# Remove temp changelog
 rm -f $TMPFILE
+
+# Building....
+mkdir -p ../logs
+( 
+	echo $(date) " - START - Building package $VERSION"
+	dpkg-buildpackage -us -uc -F -tc "$@"
+	echo $(date) " - STOP - Building package $VERSION - retcode : $!"
+) >> ../logs/dpkg-buildpackage-$VERSION.log 
+
+# Back to trunk
+cd ..
+
+# Cleanup temp build directory
 rm -Rf munin-${UPSTREAM}
 
 DEB_ARCH=$(dpkg --print-architecture)
