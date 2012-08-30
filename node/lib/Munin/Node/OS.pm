@@ -251,11 +251,13 @@ sub _set_xid {
 sub set_umask { umask(0002) or croak "Unable to set umask: $!\n"; }
 
 sub mkdir_subdir {
-    my ($path, $user) = @_;
+    my ($class, $path, $uid) = @_;
+
+    my $user = getpwuid($uid);
 
     unless (-d "$path/$user") {
         mkdir("$path/$user");
-        chown($user, "root", "$path/$user");
+        chown($uid, 0, "$path/$user");
     }
 }
 
