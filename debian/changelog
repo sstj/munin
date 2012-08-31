@@ -1,3 +1,58 @@
+munin (2.0.6~git-1) experimental; urgency=low
+
+  * 2.0.6 is actually unreleased still, this is based on the current git
+    commit 6183662. The following fixes are included:
+    - munin-node: more secure state file handling, introducing a new plugin 
+      state directory root, owned by uid 0. Then each plugin runs in its own 
+      UID plugin state directory, owned by the said UID. (Closes: #684075),
+      (Closes: #679897), closes CVE-2012-3512.
+    - munin-cgi-graph: ignore @ARGV to fix CVE-2012-3513 (Closes: #684076),
+      thanks to Helmut Grohne <helmut@subdivi.de>
+    - munin-cron: call munin-graph with --cron argument (Closes: #685343)
+    - Master/Node.pm: fix _node_read_fast() to accept all valid returns
+      (Closes: #686089) and _do_connect() to not use an uninitialized
+      variable. (Closes: #686090)
+    - munin-async: make spoolread less restrictive about (valid) plugin names
+      (Closes: #686093)
+  * Update Location and Scriptalias in shipped apache.conf to reflect changes
+    introduced upstream in 64dfec73 coming in 2.0.6. This fixes a regression
+    introduced in fixing #682869.
+
+ -- Holger Levsen <holger@debian.org>  Thu, 30 Aug 2012 08:26:09 +0000
+
+munin (2.0.5-1) unstable; urgency=low
+
+  [ Holger Levsen ]
+  * New upstream versions, fixing lots of bugs (including a regression in 
+    munin-cgi-graph preventing it from caching at all (Closes: #683064))
+    and adding documentation and manpages.  See upstream ChangeLog for the
+    full list. 
+  * Remove workaround  concerning java-plugins (667493) in debian/rules 
+    as upstream has fixed this in e7e29c4 in 2.0.3.
+  * munin-async.init: 
+    - run munin-async as munin-async user (Closes: #684171)
+    - use stop function from munin-node.init to make it actually stop it 
+      (Closes: #684170). In the future we should replace both initscripts with
+      saner rewrites.
+
+  [ Helmut Grohne ]
+  * Move cgi scripts to /usr/lib/munin/cgi. (Closes: #682869)
+
+ -- Holger Levsen <holger@debian.org>  Tue, 14 Aug 2012 19:12:54 +0200
+
+munin (2.0.2-1) unstable; urgency=low
+
+  [ Holger Levsen ]
+  * New upstream version, reintroducing munin-graph (Closes: #681674) and
+    some bugfixes. The new munin book is added to the sources, but not yet
+    build.
+  * Add proper LSB headers to all init scripts. (Closes: #680223)
+
+  [ Stig Sandbeck Mathisen ]
+  * debian/control: Rename "munin-async-*" to munin-async and munin-asyncd.
+
+ -- Holger Levsen <holger@debian.org>  Sat, 21 Jul 2012 12:43:33 -0600
+
 munin (2.0.1-1) unstable; urgency=low
 
   * New upstream version. 
