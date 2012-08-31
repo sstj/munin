@@ -89,5 +89,5 @@ then
 	mv ../*${VERSION}*.changes .
 
 	dpkg-scanpackages -m munin override > Packages
-	gzip -9 < Packages > Packages.gz
+	bzip2 -9 < Packages > Packages.bz2
 fi
