@@ -1,11 +1,16 @@
-munin (2.0.6~git-1) experimental; urgency=low
+munin (2.0.6-1) unstable; urgency=high
 
-  * 2.0.6 is actually unreleased still, this is based on the current git
-    commit 6183662. The following fixes are included:
+  * New upstream release 2.0.6, switching back to cron graphing (as it better
+    for small setups) and besides that only containing bugfixes, but many of 
+    them. See the upstream ChangeLog for the full list.
     - munin-node: more secure state file handling, introducing a new plugin 
       state directory root, owned by uid 0. Then each plugin runs in its own 
       UID plugin state directory, owned by the said UID. (Closes: #684075),
       (Closes: #679897), closes CVE-2012-3512.
+      So all properly written plugins will use
+      /var/lib/munin-node/plugin-state/$uid/$some_file now - please report
+      plugins that are still using /var/lib/munin/plugin-state/ - as those
+      might pose a security risk!
     - munin-cgi-graph: ignore @ARGV to fix CVE-2012-3513 (Closes: #684076),
       thanks to Helmut Grohne <helmut@subdivi.de>
     - munin-cron: call munin-graph with --cron argument (Closes: #685343)
@@ -14,11 +19,22 @@ munin (2.0.6~git-1) experimental; urgency=low
       variable. (Closes: #686090)
     - munin-async: make spoolread less restrictive about (valid) plugin names
       (Closes: #686093)
-  * Update Location and Scriptalias in shipped apache.conf to reflect changes
-    introduced upstream in 64dfec73 coming in 2.0.6. This fixes a regression
+  * Update Location and Scriptalias in shipped apache.conf to fix a regression
     introduced in fixing #682869.
+  * munin-node.postinst: don't create /var/lib/munin/plugin-state anymore as
+    munin-node now uses /var/lib/munin-nodes/plugin-state and subdirs and
+    handles creation by itself.
+  * debian/rules: workaround bug in upstream Makefile targets to move 
+    /var/lib/async from munin-node package to munin-async.
+  * debian/control:
+    - make munin-async depend on munin-node for now.
+    - update Vcs: headers to point to an uptodate repository.
+  * Remove build/resources/apache-cgi.conf from munin.docs as it's outdated.
+  * update munin.NEWS to reflect that everybody using cgi graphing needs to
+    update the configuration files and that cron graphing is the default
+    again. (cgi graphing was the default from pre-2.0 until 2.0.5)
 
- -- Holger Levsen <holger@debian.org>  Thu, 30 Aug 2012 08:26:09 +0000
+ -- Holger Levsen <holger@debian.org>  Mon, 03 Sep 2012 12:42:09 +0000
 
 munin (2.0.5-1) unstable; urgency=low
 
