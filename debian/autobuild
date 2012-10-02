@@ -16,7 +16,12 @@ set -e
 LANG=C
 
 OLDREVISION=$(cd trunk && git rev-parse HEAD)
-[ -z "$NO_UPDATE" ] && (cd trunk && git fetch origin && git merge origin/devel )
+[ -z "$NO_UPDATE" ] && (
+        cd trunk && git fetch origin && git merge origin/devel
+        # remove debian-like tags
+        git tag | perl -lne 'print if /-(\d+)$/' | xargs -n1 git tag -d
+)
+
 REVISION=$(cd trunk && git rev-parse HEAD)
 
 UPSTREAM=$(cd trunk && ./getversion | tr '-' '-')
