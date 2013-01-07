@@ -1,6 +1,5 @@
-#!@@GOODSH@@
-#
-: <<=cut
+#!@@PERL@@
+# -*- cperl -*-
 
 =head1 NAME
 
@@ -71,11 +70,6 @@ about IO performance.
   #%# family=auto
   #%# capabilities=autoconf
 
-
-=head1 VERSION
-
-  $Id$
-
 =head1 BUGS
 
 Some combinations of hardware and Linux (probably only 2.4 kernels)
@@ -89,7 +83,8 @@ Otherwise none known
 
 =head1 AUTHOR
 
-Unknown
+Copyright (C) 2013 Diego Elio Pettenò
+Rewritten from unknown author
 
 =head1 LICENSE
 
@@ -97,150 +92,78 @@ GPLv2
 
 =cut
 
+use strict;
+use Munin::Plugin;
 
-. $MUNIN_LIBDIR/plugins/plugin.sh
+my $HZ = $ENV{HZ} || 100;
 
-if [ "$1" = "autoconf" ]; then
-	if [ -r /proc/stat ]; then
-		echo yes
-		exit 0
-	else
-		echo no
-		exit 0
-	fi
-fi
+my @statlines = split("\n", readfile("/proc/stat"));
+my $ncpu = scalar(grep(/^cpu[0-9]+ /, @statlines));
 
-HZ=${HZ:-100}
+my @totals = split(' ', $statlines[0]);
+shift(@totals);
+my $columns = scalar(@totals);
 
-extinfo=""
+my @fields = qw(system user nice idle iowait irq softirq steal guest guest_nice);
+my %data;
+@data{@fields} = @totals;
 
-if egrep -q '^cpu +[0-9]+ +[0-9]+ +[0-9]+ +[0-9]+ +[0-9]+ +[0-9]+ +[0-9]+' /proc/stat; then
-	extinfo="iowait irq softirq"
-	if egrep -q '^cpu +[0-9]+ +[0-9]+ +[0-9]+ +[0-9]+ +[0-9]+ +[0-9]+ +[0-9]+ +[0-9]+' /proc/stat; then
-		extextinfo="steal"
-	fi
-	if egrep -q '^cpu +[0-9]+ +[0-9]+ +[0-9]+ +[0-9]+ +[0-9]+ +[0-9]+ +[0-9]+ +[0-9]+ +[0-9]+' /proc/stat; then
-		extextextinfo="guest"
-	fi
+my %field_info =
+  (
+   "system" => "CPU time spent by the kernel in system activities",
+   "user"   => "CPU time spent by normal programs and daemons",
+   "nice"   => "CPU time spent by nice(1)d programs",
+   "idle"   => "Idle CPU time",
+   "iowait" => "CPU time spent waiting for I/O operations to finish when there is nothing else to do",
+   "irq"    => "CPU time spent handling interrupts",
+   "softirq"=> "CPU time spent handling \"batched\" interrupts",
+   "steal"  => "The time that a virtual CPU had runnable tasks, but the virtual CPU itself was not running",
+   "guest"  => "The time spent running a virtual CPU for guest operating systems",
+   "guest_nice" => "The time spent running a virtual CPU for a niced guest operating system"
+  );
 
-fi
+if ( defined $ARGV[0] and $ARGV[0] eq 'autoconf' ) {
+  print @statlines ? "yes\n" : "no\n";
+  exit 0;
+} elsif ( defined $ARGV[0] and $ARGV[0] eq 'config' ) {
+  my $graphlimit = $ncpu * 100;
 
-if [ "$1" = "config" ]; then
+print <<END;
+graph_title CPU usage
+graph_args --base 1000 -r --lower-limit 0 --upper-limit $graphlimit
+graph_vlabel %
+graph_scale no
+graph_info This graph shows how CPU time is spent.
+graph_category system
+graph_period second
+END
 
-	NCPU=$(egrep '^cpu[0-9]+ ' /proc/stat | wc -l)
-	if [ "$scaleto100" = "yes" ]; then
-		graphlimit=100
-	else
-		graphlimit=$(($NCPU * 100))
-	fi
-	echo 'graph_title CPU usage'
-	echo "graph_order system user nice idle" $extinfo
-	echo "graph_args --base 1000 -r --lower-limit 0 --upper-limit $graphlimit"
-	echo 'graph_vlabel %'
-	echo 'graph_scale no'
-	echo 'graph_info This graph shows how CPU time is spent.'
-	echo 'graph_category system'
-	echo 'graph_period second'
-	echo 'system.label system'
-	echo 'system.draw AREA'
-	echo 'system.min 0'
-	echo 'system.type DERIVE'
-	echo "system.info CPU time spent by the kernel in system activities" 
-	echo 'user.label user'
-	echo 'user.draw STACK'
-	echo 'user.min 0'
-	echo 'user.type DERIVE'
-	echo 'user.info CPU time spent by normal programs and daemons'
-	echo 'nice.label nice'
-	echo 'nice.draw STACK'
-	echo 'nice.min 0'
-	echo 'nice.type DERIVE'
-	echo 'nice.info CPU time spent by nice(1)d programs'
-	echo 'idle.label idle'
-	echo 'idle.draw STACK'
-	echo 'idle.min 0'
-	echo 'idle.type DERIVE'
-	echo 'idle.info Idle CPU time'
+  foreach my $field (@fields) {
+    last unless defined($data{$field});
 
-	for field in system user nice idle; do
-		print_adjusted_thresholds "$field" "$graphlimit"
-	done
+    my $info = $field_info{$field};
 
-	if [ "$scaleto100" = "yes" ]; then
-		echo "system.cdef system,$NCPU,/"
-		echo "user.cdef user,$NCPU,/"
-		echo "nice.cdef nice,$NCPU,/"
-		echo "idle.cdef idle,$NCPU,/"
-	fi
-	if [ ! -z "$extinfo" ]
-	then
-		echo 'iowait.label iowait'
-		echo 'iowait.draw STACK'
-		echo 'iowait.min 0'
-		echo 'iowait.type DERIVE'
-		echo 'iowait.info CPU time spent waiting for I/O operations to finish when there is nothing else to do.'
-		echo 'irq.label irq'
-		echo 'irq.draw STACK'
-		echo 'irq.min 0'
-		echo 'irq.type DERIVE'
-		echo 'irq.info CPU time spent handling interrupts'
-		echo 'softirq.label softirq'
-		echo 'softirq.draw STACK'
-		echo 'softirq.min 0'
-		echo 'softirq.type DERIVE'
-		echo 'softirq.info CPU time spent handling "batched" interrupts'
-		if [ "$scaleto100" = "yes" ]; then
-			echo "iowait.cdef iowait,$NCPU,/"
-			echo "irq.cdef irq,$NCPU,/"
-			echo "softirq.cdef softirq,$NCPU,/"
-		fi
-		for field in iowait irq softirq; do
-			print_adjusted_thresholds "$field" "$graphlimit"
-		done
-	fi
+    print <<END;
+$field.label $field
+$field.min 0
+$field.max $graphlimit
+$field.draw AREASTACK
+$field.type DERIVE
+$field.info $info
+END
 
-	if [ ! -z "$extextinfo" ]
-	then
-		echo 'steal.label steal'
-		echo 'steal.draw STACK'
-		echo 'steal.min 0'
-		echo 'steal.type DERIVE'
-		echo 'steal.info The time that a virtual CPU had runnable tasks, but the virtual CPU itself was not running'
-		if [ "$scaleto100" = "yes" ]; then
-			echo "steal.cdef steal,$NCPU,/"
-		fi
-		for field in steal; do
-			print_adjusted_thresholds "$field" "$graphlimit"
-		done
-	fi
+    adjust_threshold($field, $graphlimit);
+    print_thresholds($field);
+  }
 
-	if [ ! -z "$extextextinfo" ]
-	then
-		echo 'guest.label guest'
-		echo 'guest.draw STACK'
-		echo 'guest.min 0'
-		echo 'guest.type DERIVE'
-		echo 'guest.info The time spent running a virtual CPU for guest operating systems under the control of the Linux kernel.'
-		if [ "$scaleto100" = "yes" ]; then
-			echo "guest.cdef guest,$NCPU,/"
-		fi
-		for field in guest; do
-			print_adjusted_thresholds "$field" "$graphlimit"
-		done
-	fi
+  unless ( ($ENV{MUNIN_CAP_DIRTYCONFIG} || 0) == 1 ) {
+    exit 0;
+  }
+}
 
-	exit 0
-fi
+foreach my $field (@fields) {
+  last unless defined($data{$field});
+  my $value = ($data{$field} * 100)/$HZ;
 
-# Note: Counters/derive need to report integer values.  Also we need
-# to avoid 10e+09 and the like %.0f should do this.
-
-if [ ! -z "$extextextinfo" ]; then
-	awk -v hz=$HZ '/^cpu / { printf "user.value %.0f\nnice.value %.0f\nsystem.value %.0f\nidle.value %.0f\niowait.value %.0f\nirq.value %.0f\nsoftirq.value %.0f\nsteal.value %.0f\nguest.value %.0f\n", $2*100/hz, $3*100/hz, $4*100/hz, $5*100/hz, $6*100/hz, $7*100/hz, $8*100/hz, $9*100/hz, $10*100/hz }' < /proc/stat
-elif [ ! -z "$extextinfo" ]; then
-	awk -v hz=$HZ '/^cpu / { printf "user.value %.0f\nnice.value %.0f\nsystem.value %.0f\nidle.value %.0f\niowait.value %.0f\nirq.value %.0f\nsoftirq.value %.0f\nsteal.value %.0f\n", $2*100/hz, $3*100/hz, $4*100/hz, $5*100/hz, $6*100/hz, $7*100/hz, $8*100/hz, $9*100/hz }' < /proc/stat
-elif [ ! -z "$extinfo" ]; then
-	awk -v hz=$HZ '/^cpu / { printf "user.value %.0f\nnice.value %.0f\nsystem.value %.0f\nidle.value %.0f\niowait.value %.0f\nirq.value %.0f\nsoftirq.value %.0f\n", $2*100/hz, $3*100/hz, $4*100/hz, $5*100/hz, $6*100/hz, $7*100/hz, $8*100/hz }' < /proc/stat
-else
-	awk -v hz=$HZ '/^cpu / { printf "user.value %.0f\nnice.value %.0f\nsystem.value %.0f\nidle.value %.0f\n", $2*100/hz, $3*100/hz, $4*100/hz, $5*100/hz }' < /proc/stat
-fi
+  print "$field.value $value\n";
+}
