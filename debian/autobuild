@@ -4,27 +4,35 @@
 
 # Has to be launched from the upper svn dir. 
 # The dir structure should be like :  
-# trunk/
+# ${WORKING_DIR}/
 # debian/
-# trunk/debian -> ../debian
+# ${WORKING_DIR}/debian -> ../debian
 # packages/
 
 # Stopping on error
 set -e
 
+WORKING_DIR=$1
+if [ -z "$WORKING_DIR" ];
+then
+	WORKING_DIR="trunk"
+else
+	shift
+fi
+
 # We don't want localized mesgs
 LANG=C
 
-OLDREVISION=$(cd trunk && git rev-parse HEAD)
+OLDREVISION=$(cd ${WORKING_DIR} && git rev-parse HEAD)
 [ -z "$NO_UPDATE" ] && (
-        cd trunk && git fetch origin && git merge origin/devel
+        cd ${WORKING_DIR} && git fetch origin && git merge origin/devel
         # remove debian-like tags
         git tag | perl -lne 'print if /-(\d+)$/' | xargs -n1 git tag -d
 )
 
-REVISION=$(cd trunk && git rev-parse HEAD)
+REVISION=$(cd ${WORKING_DIR} && git rev-parse HEAD)
 
-UPSTREAM=$(cd trunk && ./getversion | tr '-' '-')
+UPSTREAM=$(cd ${WORKING_DIR} && ./getversion | tr '-' '-')
 VERSION="${UPSTREAM}-999"
 
 
@@ -35,7 +43,7 @@ then
 fi
 
 # Creating temp source dir ...
-(cd trunk && git archive --format=tar debian-auto --prefix=munin-${UPSTREAM}/ ) | tar x
+(cd ${WORKING_DIR} && git archive --format=tar $(git branch | awk '$1 == "*" {print $2}') --prefix=munin-${UPSTREAM}/ ) | tar x
 
 # ... and go there
 cd munin-${UPSTREAM}
@@ -43,16 +51,17 @@ echo ${UPSTREAM} > RELEASE
 
 TMPFILE=$(mktemp)
 
-# Something has changed, building the changelog, from trunk
+# Something has changed, building the changelog, from ${WORKING_DIR}
 (
-	cd ../trunk
+	LOGSPAN=${LOGSPAN:-"$OLDREVISION..$REVISION"}
+	cd ../${WORKING_DIR}
 	printf "munin ($VERSION) experimental; urgency=low\n"
 	printf "\n" 
 	printf "  * Somewhat daily build from devel\n"
 	printf "  * Authors:\n";
-	[ -z "$NO_UPDATE" ] && git shortlog $OLDREVISION..$REVISION | perl -lne 'if (/^(\w[^(]+)/) { $a = $1; $a =~ s/ +$//; print "    $a" }'
+	[ -z "$NO_UPDATE" ] && git shortlog $LOGSPAN | perl -lne 'if (/^(\w[^(]+)/) { $a = $1; $a =~ s/ +$//; print "    $a" }'
 	printf "  * Commit log:\n";
-	[ -z "$NO_UPDATE" ] && git log --graph --no-merges --oneline $OLDREVISION..$REVISION | perl -lne 'print "    $_"'
+	[ -z "$NO_UPDATE" ] && git log --graph --no-merges --oneline $LOGSPAN | perl -lne 'print "    $_"'
 	printf "\n"
 	printf " -- Steve Schnepp <steve.schnepp@munin-monitoring.org>  "
 	date --rfc-822
@@ -74,7 +83,7 @@ mkdir -p ../logs
 	echo $(date) " - STOP - Building package $VERSION - retcode : $!"
 ) >> ../logs/dpkg-buildpackage-$VERSION.log 
 
-# Back to trunk
+# Back to ${WORKING_DIR}
 cd ..
 
 # Cleanup temp build directory
